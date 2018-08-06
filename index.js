@@ -60,7 +60,7 @@ async function initialize() {
     });
 
     //Initialize server
-    app.listen(port, function () {
+    app.listen(port, 'localhost', function () {
         console.log('Example app listening on port ' + port);
     });
 }
