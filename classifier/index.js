@@ -47,6 +47,7 @@ const functions = {
             writeStream.end();
 
             await ftWrapper.train(paths.pretrainedData, paths.trainedData, trainingOptions);
+			console.log("Successfully trained");
             await unlinkAsync(paths.pretrainedData);
         }
         catch (err) {
@@ -55,15 +56,10 @@ const functions = {
         }
     },
 
-    predict: async function(texts) {
+    predict: async function(text) {
         let className;
         try {
-            let writeStream = fs.createWriteStream(paths.predictData);
-            texts.forEach((item) => writeStream.write(item + '\n'));
-            writeStream.end();
-
-            className = (await ftWrapper.predict(paths.trainedData, paths.predictData)).replace(/(__label__|\n)/g, '');
-            await unlinkAsync(paths.predictData);
+			className = (await ftWrapper.predict(paths.trainedData, text)).replace(/(__label__|\n)/g, '');
         }
         catch (err) {
             console.error('An error occured during classifier prediction: ', err);
@@ -71,19 +67,19 @@ const functions = {
         }
         finally {
             if (!className) className = 'unknown';
-            await functions.saveTrainingText(className, texts.filter(x => !knownTexts.includes(x)));
+            await functions.saveTrainingText(className, text);
             return className;
         }
     },
 
-    saveTrainingText: async (className, texts) => {
-        if (texts.length === 0) return;
+    saveTrainingText: async (className, text) => {
+		if (knownTexts.includes(text)) return;
         try {
             let training = JSON.parse(await readFileAsync(paths.trainingData, 'utf8'));
 
-            texts.forEach((text) => training.push({ class: className, text: text, checked: false }));;
+            training.push({ class: className, text: text, checked: false })
             await writeFileAsync(paths.trainingData, JSON.stringify(training, null, 2));
-            texts.forEach((text) => knownTexts.push(text));
+            knownTexts.push(text);
         }
         catch (err) {
             console.error('An error occured during classification save: ', err);

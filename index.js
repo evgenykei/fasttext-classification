@@ -52,7 +52,7 @@ async function initialize() {
 
     app.get('/api/predict/:text', async function(req, res, next) {
         try {
-            res.send(await classifier.predict([req.params.text]));
+            res.send(await classifier.predict(req.params.text));
         }
         catch (err) {
             next(err);

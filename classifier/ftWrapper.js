@@ -6,26 +6,29 @@ const fs          = require('fs'),
 const readFileAsync = promisify(fs.readFile),
       unlinkAsync   = promisify(fs.unlink);
 
-const executeCommand = (command) => new Promise((resolve, reject) => {
-    shell.exec(command, function(code, stdout, stderr) {
-        if (code === 0) resolve(stdout);
-        else reject('command execute error');
-    });
-});
-
 const functions = (ftPath) => ({
 
     train: (pretrainedPath, trainedPath, trainingOptions) => {
         if (trainingOptions && trainingOptions.length !== 0) trainingOptions = '-' + trainingOptions.join(' -');
         let command = `${ftPath} supervised -input ${pretrainedPath} -output ${trainedPath} ${trainingOptions}`;
  
-        return executeCommand(command);
+        return new Promise((resolve, reject) => {
+			shell.exec(command, {silent:true}, function(code, stdout, stderr) {
+				if (code === 0) resolve(stdout);
+				else reject('command execute error');
+			});
+		});
     },
 
-    predict: (trainedPath, predictPath, predictNum) => {
-        let command = `${ftPath} predict ${trainedPath}.bin ${predictPath} ${predictNum || 1}`;
+    predict: (trainedPath, text, predictNum) => {
+		let command = `${ftPath} predict ${trainedPath}.bin - ${predictNum || 1}`;
 
-        return executeCommand(command);
+		return new Promise((resolve, reject) => {
+			shell.ShellString(text).exec(command, {silent:true}, function(code, stdout, stderr) {
+				if (code === 0) resolve(stdout);
+				else reject('command execute error');
+			});
+		});
     }
 
 })

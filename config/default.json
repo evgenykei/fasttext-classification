@@ -2,8 +2,7 @@
     "Path": {
         "trainingData": "./training_data/training.json",
         "pretrainedData": "./training_data/pretrained.txt",
-        "trainedData": "./training_data/trained",
-        "predictData": "./training_data/predict.txt"
+        "trainedData": "./training_data/trained"
     },
 
     "Timers": {
