@@ -11,32 +11,14 @@
     },
 
     "Training": {
-
-        "__lrComment": "learning rate [0.1]",
         "lr": 0.1,
-
-        "__lrUpdateRateComment": "change the rate of updates for the learning rate [100]",
         "lrUpdateRate": 100,
-
-        "__dimComment": "size of word vectors [5]",
         "dim": 5,
-
-        "__wsComment": "size of the context window [5]",
         "ws": 5,
-
-        "__wordNgramsComment": "max length of word ngram [1]",
         "wordNgrams": 2,
-
-        "__epochComment": "number of epochs [25]",
         "epoch": 100,
-
-        "__negComment": "number of negatives sampled [5]",
         "neg": 5,
-
-        "__lossComment": "loss function {ns, hs, softmax} [softmax]",
         "loss": "softmax",
-
-        "__threadComment": "number of threads [12]",
         "thread": 12
     }
 }

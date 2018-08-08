@@ -1,9 +1,7 @@
 const fs          = require('fs'),
-      path        = require('path'),
       {promisify} = require('util'),
-      config      = require('config');
-
-const ftWrapper = require('./ftWrapper').initialize(process.env.FASTTEXT_PATH);
+      config      = require('config'),
+      FastText    = require('fasttext.js');
 
 const readFileAsync  = promisify(fs.readFile),
       writeFileAsync = promisify(fs.writeFile),
@@ -17,18 +15,13 @@ const paths    = config.get('Path')
 
 const trainingInterval = config.get('Timers.trainingInterval');
 
-const trainingOptions = (() => {
-    if (!training) return;
-    
-    let params = [];
-    for (let par in training){
-        if (par.startsWith('_') === true) continue;
-        let val = training[par];
-        if (val) params.push(par + ' ' + val);
-    }
-
-    return params;
-})();
+const fastText = new FastText({
+	bin: process.env.FASTTEXT_PATH,
+    serializeTo: paths.trainedData,
+	loadModel: paths.trainedData + '.bin',
+    trainFile: paths.pretrainedData,
+	train: training
+});
 
 var knownTexts = [], modifiedStamp;
 
@@ -42,12 +35,14 @@ const functions = {
             if (training.length === 0) return;
             training.map((item) => knownTexts.push(item.text.toLowerCase()));
 
-            let writeStream = fs.createWriteStream(paths.pretrainedData);
-            training.forEach((item) => writeStream.write('__label__' + item.class + ' ' + item.text + '\n'));
-            writeStream.end();
+            let parsed = '';
+            training.forEach((item) => parsed += '__label__' + item.class + ' ' + item.text + '\n');
+            await writeFileAsync(paths.pretrainedData, parsed, 'utf8');
 
-            await ftWrapper.train(paths.pretrainedData, paths.trainedData, trainingOptions);
-			console.log("Successfully trained");
+            await fastText.train();
+            console.log("Successfully trained");
+            await fastText.unload();
+            await fastText.load();
             await unlinkAsync(paths.pretrainedData);
         }
         catch (err) {
@@ -59,7 +54,7 @@ const functions = {
     predict: async function(text) {
         let className;
         try {
-			className = (await ftWrapper.predict(paths.trainedData, text)).replace(/(__label__|\n)/g, '');
+			className = (await fastText.predict(text))[0].label;
         }
         catch (err) {
             console.error('An error occured during classifier prediction: ', err);
@@ -107,6 +102,9 @@ const functions = {
 };
 
 module.exports.initialize = async () => {
+    //Check FastText library existence
+    if (!process.env.FASTTEXT_PATH || fs.existsSync(process.env.FASTTEXT_PATH) === false) throw 'FastText library not found';
+
     //Create missing directories
     if (!await existsAsync('./training_data')) await mkdirAsync('./training_data');
 
