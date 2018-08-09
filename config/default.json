@@ -19,6 +19,7 @@
         "epoch": 100,
         "neg": 5,
         "loss": "softmax",
-        "thread": 12
+        "thread": 12,
+		"bucket": 2000000
     }
 }
