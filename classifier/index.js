@@ -29,9 +29,11 @@ var knownTexts = [], modifiedStamp;
 const functions = {
 
     prepareTrainingData: () => new Promise((resolve, reject) => {
+        let entries = 0;
         let readDb = db.read(),
             transform = miss.through.obj(
                 (chunk, enc, cb) => {
+                    entries += chunk.length;
                     cb(null, chunk.reduce((curr, item) => curr += '__label__' + item.class + ' ' + item.text + ' ', ''));
                 },
                 (cb) => cb(null, '')
@@ -40,7 +42,7 @@ const functions = {
 
         miss.pipe(readDb, transform, write, (err) => {
             if (err) reject(err);
-            else resolve();
+            else resolve(entries);
         });
     }),
 
@@ -48,12 +50,14 @@ const functions = {
         knownTexts = [];
 
         try {
-            await functions.prepareTrainingData();
+            let entries = await functions.prepareTrainingData();
 
-            await fastText.train();
-            console.log("Successfully trained");
-            await fastText.unload();
-            await fastText.load();
+            if (entries > 0) {
+                await fastText.train();
+                console.log("Successfully trained");
+                await fastText.unload();
+                await fastText.load();
+            }
             await unlinkAsync(paths.pretrainedData);
         }
         catch (err) {
@@ -92,8 +96,9 @@ module.exports.initialize = async () => {
     //Check FastText library existence
     if (!process.env.FASTTEXT_PATH || fs.existsSync(process.env.FASTTEXT_PATH) === false) throw 'FastText library not found';
 
-    //Create missing directories
+    //Create missing directories and files
     if (!await existsAsync('./training_data')) await mkdirAsync('./training_data');
+	if (!await existsAsync(paths.db)) fs.closeSync(fs.openSync(paths.db, 'w'));
 
     //Train and set training interval
     let trainFunction = async () => {

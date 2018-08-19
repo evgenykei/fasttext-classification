@@ -6,7 +6,7 @@ const db         = new Datastore({ filename: __dirname + '/db', autoload: true }
 
 const defSchema = Joi.object().keys({
     class: Joi.string().uppercase().required(),
-    text: Joi.string().required(),
+    text: Joi.string().lowercase().required(),
     checked: Joi.boolean().required()
 });
 
