@@ -1,11 +1,12 @@
 const fs          = require('fs'),
       {promisify} = require('util'),
       config      = require('config'),
-      FastText    = require('fasttext.js');
+      FastText    = require('fasttext.js'),      
+      miss        = require('mississippi');
 
-const readFileAsync  = promisify(fs.readFile),
-      writeFileAsync = promisify(fs.writeFile),
-      unlinkAsync    = promisify(fs.unlink),
+const db = require('../db');
+
+const unlinkAsync    = promisify(fs.unlink),
       existsAsync    = promisify(fs.exists),
       statAsync      = promisify(fs.stat),
       mkdirAsync     = promisify(fs.mkdir);
@@ -27,17 +28,27 @@ var knownTexts = [], modifiedStamp;
 
 const functions = {
 
+    prepareTrainingData: () => new Promise((resolve, reject) => {
+        let readDb = db.read(),
+            transform = miss.through.obj(
+                (chunk, enc, cb) => {
+                    cb(null, chunk.reduce((curr, item) => curr += '__label__' + item.class + ' ' + item.text + ' ', ''));
+                },
+                (cb) => cb(null, '')
+            ),
+            write = fs.createWriteStream(paths.pretrainedData);
+
+        miss.pipe(readDb, transform, write, (err) => {
+            if (err) reject(err);
+            else resolve();
+        });
+    }),
+
     train: async function() {
         knownTexts = [];
 
         try {
-            let training = JSON.parse(await readFileAsync(paths.trainingData, 'utf8'));
-            if (training.length === 0) return;
-            training.map((item) => knownTexts.push(item.text.toLowerCase()));
-
-            let parsed = '';
-            training.forEach((item) => parsed += '__label__' + item.class + ' ' + item.text + '\n');
-            await writeFileAsync(paths.pretrainedData, parsed, 'utf8');
+            await functions.prepareTrainingData();
 
             await fastText.train();
             console.log("Successfully trained");
@@ -47,7 +58,6 @@ const functions = {
         }
         catch (err) {
             console.error('An error occured during classifier training: ', err);
-            throw Error(err);
         }
     },
 
@@ -70,33 +80,10 @@ const functions = {
     saveTrainingText: async (className, text) => {
 		if (knownTexts.includes(text)) return;
         try {
-            let training = JSON.parse(await readFileAsync(paths.trainingData, 'utf8'));
-
-            training.push({ class: className, text: text, checked: false })
-            await writeFileAsync(paths.trainingData, JSON.stringify(training, null, 2));
+            await db.create({ class: className, text: text, checked: false })
             knownTexts.push(text);
         }
-        catch (err) {
-            console.error('An error occured during classification save: ', err);
-        }
-    },
-
-    getTrainingData: async () => {
-        try {
-            return JSON.parse(await readFileAsync(paths.trainingData, 'utf8'))
-        }
-        catch (err) {
-            console.error('An error occured during reading training data: ', err);
-        }
-    },
-
-    setTrainingData: async (training) =>  {
-        try {
-            await writeFileAsync(paths.trainingData, JSON.stringify(training, null, 2));
-        }
-        catch (err) {
-            console.error('An error occured during writing training data: ', err);
-        }
+        catch (err) { }
     }
 
 };
@@ -108,13 +95,9 @@ module.exports.initialize = async () => {
     //Create missing directories
     if (!await existsAsync('./training_data')) await mkdirAsync('./training_data');
 
-    //Create training data if not exists
-    if (!await existsAsync(paths.trainingData)) 
-        await writeFileAsync(paths.trainingData, JSON.stringify([], null, 2));
-
     //Train and set training interval
     let trainFunction = async () => {
-        let mtime = (await statAsync(paths.trainingData)).mtime.toString();
+        let mtime = (await statAsync(paths.db)).mtime.toString();
         if (mtime === modifiedStamp) return;
         modifiedStamp = mtime;
         await functions.train();

@@ -1,6 +1,6 @@
 {
     "Path": {
-        "trainingData": "./training_data/training.json",
+        "db": "./db/db",
         "pretrainedData": "./training_data/pretrained.txt",
         "trainedData": "./training_data/trained"
     },

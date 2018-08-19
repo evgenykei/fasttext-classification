@@ -1,0 +1,169 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+  <% 
+    Object.keys(query).forEach((key) => (query[key] == null) && delete query[key]);
+    function setQuery(prop, value) {
+      let newQuery = Object.assign({}, query);
+      newQuery[prop] = value;
+      return querystring.stringify(newQuery);
+    }
+
+    let asc = query.asc === -1 ? ' up' : '';
+    let col_class_class   = 'sign AZ' + (query.sort !== 'class' ? ' invisible' : asc),
+        col_text_class    = 'sign AZ' + (query.sort !== 'text' ? ' invisible' : asc),
+        col_checked_class = 'sign BOOL' + (query.sort !== 'checked' ? ' invisible' : asc);
+  %>
+  <% include ./partials/head %>
+  <body>
+
+    <!--Message alert-->
+    <% if (message) { %>
+      <div class="alert alert-info alert-dismissible fade show mt-2" role="alert">
+        <%= message %>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+    <% } %>
+
+    <!--Table-->
+    <div>
+
+      <!--Table header-->
+      <div class="row mt-3">
+        <div class="col-sm-12 col-md-6 mb-3">
+          <button class="btn btn-sm btn-secondary" id="newModalShow">New</button>
+          <button class="btn btn-sm btn-secondary" id="editModalShow">Edit</button>
+          <button class="btn btn-sm btn-secondary" id="removeElement">Remove</button>
+        </div>
+        <div class="col-sm-12 offset-md-2 col-md-4">
+          <div class="input-group input-group-sm mb-3">
+            <% if (query.search) { %>
+              <div class="input-group-prepend">
+                <button class="btn btn-secondary" type="button" onclick="clearSearch('<%= querystring.stringify(query) %>');">Clear</button>
+              </div>
+            <% } %>
+            <input id="search" type="text" class="form-control" placeholder="Text" aria-label="Search text" value="<%= query.search %>">
+            <div class="input-group-append">
+              <button id="searchButton" class="btn btn-secondary" type="button" onclick="search('<%= querystring.stringify(query) %>');">Search</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!--Table body-->
+      <div class="row">
+        <div class="col-sm-12">
+            <table id="defTable" class="table table-sm sortable table-striped table-bordered table-hover">
+              <thead>
+                <tr>
+                  <th id="col_class" scope="col"><a onclick="sort('<%= querystring.stringify(query) %>', 'class');">Class<span class="<%= col_class_class %>"></span></a></th>
+                  <th id="col_text" scope="col"><a onclick="sort('<%= querystring.stringify(query) %>', 'text');">Text<span class="<%= col_text_class %>"></span></a></th>
+                  <th id="col_checked" scope="col"><a onclick="sort('<%= querystring.stringify(query) %>', 'checked');">Checked<span class="<%= col_checked_class %>"></span></a></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% definitions.forEach(function(def) { %>
+                  <tr id="row<%= def._id %>">
+                    <td><%= def.class %></td>
+                    <td><%= def.text %></td>
+                    <td><%= def.checked %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+        </div>
+      </div>
+
+      <!--Table footer-->
+      <div class="row">
+          <div class="col-sm-12 col-md-5">
+            <div class="dropdown show">
+              Show
+              <a class="btn btn-sm btn-secondary dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <%= query.perPage %>
+              </a>
+              entries
+            
+              <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+                <a class="dropdown-item" href="?<%= setQuery('perPage', 10) %>">10</a>
+                <a class="dropdown-item" href="?<%= setQuery('perPage', 25) %>">25</a>
+                <a class="dropdown-item" href="?<%= setQuery('perPage', 50) %>">50</a>
+                <a class="dropdown-item" href="?<%= setQuery('perPage', 100) %>">100</a>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-12 col-md-7">
+            <% if (definitions.length !== 0) { %>    
+              <nav aria-label="Page navigation example">
+                  <ul class="pagination justify-content-end">
+                    <% if (pagination.previous != null) { %>
+                    <li class="page-item"><a class="page-link" href="?<%= setQuery('page', pagination.first) %>">First</a></li>
+                    <li class="page-item"><a class="page-link" href="?<%= setQuery('page', pagination.previous) %>"><%= pagination.previous %></a></li>
+                    <% } %>
+                    <li class="page-item active"><a class="page-link"><%= pagination.current %></a></li>
+                    <% if (pagination.next != null) { %>
+                    <li class="page-item"><a class="page-link" href="?<%= setQuery('page', pagination.next) %>"><%= pagination.next %></a></li>
+                    <li class="page-item"><a class="page-link" href="?<%= setQuery('page', pagination.last) %>">Last</a></li>
+                    <% } %>
+                  </ul>
+              </nav>
+            <% } %>
+          </div>
+        </div>
+
+    </div>
+
+    <!--Modal window-->
+    <div id="modal" class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+
+          <div class="modal-header">
+            <h5 class="modal-title"></h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+
+          <div class="modal-body">
+            <form id="modalForm" method="POST" action="/create">
+              <input id="modal-field-id" type="hidden" name="id">
+              <input type="hidden" name="page" value="<%= query.page %>">
+              <input type="hidden" name="perPage" value="<%= query.perPage %>">
+              <input type="hidden" name="sort" value="<%= query.sort %>">
+              <input type="hidden" name="asc" value="<%= query.asc %>">
+              <input type="hidden" name="search" value="<%= query.search %>">
+              <div class="form-group">
+                <label for="modal-field-class" class="col-form-label">Class name:</label>
+                <input type="text" class="form-control" name="class" id="modal-field-class" required>
+              </div>
+              <div class="form-group">
+                <label for="modal-field-text" class="col-form-label">Text:</label>
+                <textarea class="form-control" name="text" id="modal-field-text" required></textarea>
+              </div>
+              <div class="form-group">
+                <label for="text" class="col-form-label">Checked:</label>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="checked" id="modal-field-checked-false" value=false>
+                  <label class="form-check-label" for="modal-field-checked-false">false</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="checked" id="modal-field-checked-true" value=true>
+                  <label class="form-check-label" for="modal-field-checked-true">true</label>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button class="modal-submit btn btn-info" type="submit" form="modalForm"></button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,55 +1,39 @@
 require('dotenv').config()
 
 const express     = require('express'),
-      bodyParser  = require('body-parser'),
-      serveStatic = require('serve-static');
+      bodyParser  = require('body-parser')
 
-const Classifier = require('./classifier'); 
+//load modules
+const Classifier = require('./classifier');
 
-const app  = express(),
-      port = process.env.PORT || 3002;
+const app     = express(),
+      port    = process.env.PORT || 3002;
 
 async function initialize() {
     const classifier = await Classifier.initialize();
 
     //Configure middlewares    
+    app.set('view engine', 'ejs');
+    app.use(bodyParser.urlencoded({ extended: false }))
     app.use(bodyParser.json());
-    app.use(serveStatic('./public'));
+    app.use(express.static('public'));
     app.use(function(err, req, res, next) {
         console.error('An error occured during express route execution: ', err);
         res.status(500).send(err.message);
-    })
+    });
 
     //Configure routes
-    app.get('/api/trainingData', async function(req, res, next) {
-        try {
-            res.send(await classifier.getTrainingData());
-        }
-        catch (err) {
-            next(err);
-        }
-    });
+    app.get('/', (req, res) => res.redirect('/list'));
 
-    app.post('/api/trainingData', async function(req, res, next) {
-        try {
-            await classifier.setTrainingData(req.body);
-            res.sendStatus(200);
-        }
-        catch (err) {
-            next(err);
-        }
-    })
+    app.get('/list', require('./routes/definition.list.route'));
 
-    app.get('/api/train', async function (req, res, next) {
-        try {
-            await classifier.train();
-            res.sendStatus(200);
-        }
-        catch (err) {
-            next(err);
-        }
-    });
+    app.post('/create', require('./routes/definition.create.route'));
 
+    app.post('/edit', require('./routes/definition.edit.route'));
+
+    app.post('/remove', require('./routes/definition.remove.route'));
+
+    //API
     app.get('/api/predict/:text', async function(req, res, next) {
         try {
             res.send(await classifier.predict(req.params.text));
