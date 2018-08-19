@@ -34,7 +34,7 @@ const functions = {
             transform = miss.through.obj(
                 (chunk, enc, cb) => {
                     entries += chunk.length;
-                    cb(null, chunk.reduce((curr, item) => curr += '__label__' + item.class + ' ' + item.text + ' ', ''));
+                    cb(null, chunk.reduce((curr, item) => curr += '__label__' + item.class + ' ' + item.text + '\n', ''));
                 },
                 (cb) => cb(null, '')
             ),
